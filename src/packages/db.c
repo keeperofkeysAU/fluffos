@@ -1712,13 +1712,12 @@ static void Postgres2_cleanup (dbconn_t * c) {
 	
 	// Adam: to emtpy the array 
 	//memset(*(c->postgres2.errormsg), 0, sizeof(*(c->postgres2.errormsg)));
+	// OR do I want to give away the memory... undecided
+	// free(c->postgres2.errormsg);
 	if (c->postgres2.results) {
 		PQclear(c->postgres2.results);
 		c->postgres2.results = NULL;
 		*(c->postgres2.res_status) = '\0';
-
-		// Adam: to empty the array
-		// memset(*(c->postgres
 	}
 }
 
