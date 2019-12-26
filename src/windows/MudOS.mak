@@ -6,22 +6,22 @@
 !IF "$(CFG)" == ""
 CFG=Win32 Debug
 !MESSAGE No configuration specified.  Defaulting to Win32 Debug.
-!ENDIF 
+!ENDIF
 
 !IF "$(CFG)" != "Win32 Release" && "$(CFG)" != "Win32 Debug"
 !MESSAGE Invalid configuration "$(CFG)" specified.
 !MESSAGE You can specify a configuration when running NMAKE on this makefile
 !MESSAGE by defining the macro CFG on the command line.  For example:
-!MESSAGE 
+!MESSAGE
 !MESSAGE NMAKE /f "MudOS.mak" CFG="Win32 Debug"
-!MESSAGE 
+!MESSAGE
 !MESSAGE Possible choices for configuration are:
-!MESSAGE 
+!MESSAGE
 !MESSAGE "Win32 Release" (based on "Win32 (x86) Console Application")
 !MESSAGE "Win32 Debug" (based on "Win32 (x86) Console Application")
-!MESSAGE 
+!MESSAGE
 !ERROR An invalid configuration is specified.
-!ENDIF 
+!ENDIF
 
 ################################################################################
 # Begin Project
@@ -44,20 +44,20 @@ INTDIR=.\WinRel
 
 ALL : $(OUTDIR)/MudOS.exe $(OUTDIR)/MudOS.bsc
 
-$(OUTDIR) : 
+$(OUTDIR) :
     if not exist $(OUTDIR)/nul mkdir $(OUTDIR)
 
 # ADD BASE CPP /nologo /W3 /GX /YX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /FR /c
 # ADD CPP /nologo /G4 /MT /W3 /GX /YX /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "WIN95" /FR /c
 CPP_PROJ=/nologo /G4 /MT /W3 /GX /YX /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D\
- "WIN95" /FR$(INTDIR)/ /Fp$(OUTDIR)/"MudOS.pch" /Fo$(INTDIR)/ /c 
+ "WIN95" /FR$(INTDIR)/ /Fp$(OUTDIR)/"MudOS.pch" /Fo$(INTDIR)/ /c
 CPP_OBJS=.\WinRel/
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
-BSC32_FLAGS=/nologo /o$(OUTDIR)/"MudOS.bsc" 
+BSC32_FLAGS=/nologo /o$(OUTDIR)/"MudOS.bsc"
 BSC32_SBRS= \
 	$(INTDIR)/grammar_tab.sbr \
 	$(INTDIR)/lex.sbr \
@@ -131,7 +131,7 @@ LINK32=link.exe
   LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib\
    advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib\
 !  odbccp32.lib wsock32.lib /NOLOGO /VERSION:22,32 /SUBSYSTEM:console /PDB:none\
-!  /MACHINE:I386 /OUT:$(OUTDIR)/"MudOS.exe" 
+!  /MACHINE:I386 /OUT:$(OUTDIR)/"MudOS.exe"
 DEF_FILE=
 LINK32_OBJS= \
 	$(INTDIR)/grammar_tab.obj \
@@ -214,7 +214,7 @@ INTDIR=.\WinDebug
 
 ALL : $(OUTDIR)/MudOS.exe $(OUTDIR)/MudOS.bsc
 
-$(OUTDIR) : 
+$(OUTDIR) :
     if not exist $(OUTDIR)/nul mkdir $(OUTDIR)
 
 # ADD BASE CPP /nologo /W3 /GX /Zi /YX /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /FR /c
@@ -222,14 +222,14 @@ $(OUTDIR) :
 # SUBTRACT CPP /Gy
 CPP_PROJ=/nologo /MT /W3 /GX /Zi /YX /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE"\
  /D "WIN95" /D "DEBUG" /FR$(INTDIR)/ /Fp$(OUTDIR)/"MudOS.pch" /Fo$(INTDIR)/\
-   /Fd$(OUTDIR)/"MudOS.pdb" /c 
+   /Fd$(OUTDIR)/"MudOS.pdb" /c
 CPP_OBJS=.\WinDebug/
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
-BSC32_FLAGS=/nologo /o$(OUTDIR)/"MudOS.bsc" 
+BSC32_FLAGS=/nologo /o$(OUTDIR)/"MudOS.bsc"
 BSC32_SBRS= \
 	$(INTDIR)/grammar_tab.sbr \
 	$(INTDIR)/lex.sbr \
@@ -303,7 +303,7 @@ LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib\
  advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib\
  odbccp32.lib wsock32.lib /NOLOGO /SUBSYSTEM:console /INCREMENTAL:yes\
- /PDB:$(OUTDIR)/"MudOS.pdb" /DEBUG /MACHINE:I386 /OUT:$(OUTDIR)/"MudOS.exe" 
+ /PDB:$(OUTDIR)/"MudOS.pdb" /DEBUG /MACHINE:I386 /OUT:$(OUTDIR)/"MudOS.exe"
 DEF_FILE=
 LINK32_OBJS= \
 	$(INTDIR)/grammar_tab.obj \
@@ -371,16 +371,16 @@ $(OUTDIR)/MudOS.exe : $(OUTDIR)  $(DEF_FILE) $(LINK32_OBJS)
   $(LINK32_FLAGS) $(LINK32_OBJS)
 <<
 
-!ENDIF 
+!ENDIF
 
 .c{$(CPP_OBJS)}.obj:
-   $(CPP) $(CPP_PROJ) $<  
+   $(CPP) $(CPP_PROJ) $<
 
 .cpp{$(CPP_OBJS)}.obj:
-   $(CPP) $(CPP_PROJ) $<  
+   $(CPP) $(CPP_PROJ) $<
 
 .cxx{$(CPP_OBJS)}.obj:
-   $(CPP) $(CPP_PROJ) $<  
+   $(CPP) $(CPP_PROJ) $<
 
 ################################################################################
 # Begin Group "Source Files"
@@ -851,7 +851,7 @@ $(INTDIR)/compile_file.obj :  $(SOURCE)  $(DEP_COMPIL) $(INTDIR)
 SOURCE=.\packages\contrib.c
 
 $(INTDIR)/contrib.obj :  $(SOURCE)  $(INTDIR)
-   $(CPP) $(CPP_PROJ)  $(SOURCE) 
+   $(CPP) $(CPP_PROJ)  $(SOURCE)
 
 # End Source File
 ################################################################################
@@ -860,7 +860,7 @@ $(INTDIR)/contrib.obj :  $(SOURCE)  $(INTDIR)
 SOURCE=.\packages\sockets.c
 
 $(INTDIR)/sockets.obj :  $(SOURCE)  $(INTDIR)
-   $(CPP) $(CPP_PROJ)  $(SOURCE) 
+   $(CPP) $(CPP_PROJ)  $(SOURCE)
 
 # End Source File
 ################################################################################
@@ -869,7 +869,7 @@ $(INTDIR)/sockets.obj :  $(SOURCE)  $(INTDIR)
 SOURCE=.\packages\develop.c
 
 $(INTDIR)/develop.obj :  $(SOURCE)  $(INTDIR)
-   $(CPP) $(CPP_PROJ)  $(SOURCE) 
+   $(CPP) $(CPP_PROJ)  $(SOURCE)
 
 # End Source File
 ################################################################################
@@ -878,7 +878,7 @@ $(INTDIR)/develop.obj :  $(SOURCE)  $(INTDIR)
 SOURCE=.\packages\math.c
 
 $(INTDIR)/math.obj :  $(SOURCE)  $(INTDIR)
-   $(CPP) $(CPP_PROJ)  $(SOURCE) 
+   $(CPP) $(CPP_PROJ)  $(SOURCE)
 
 # End Source File
 ################################################################################
@@ -887,7 +887,7 @@ $(INTDIR)/math.obj :  $(SOURCE)  $(INTDIR)
 SOURCE=.\mudlib\interface.c
 
 $(INTDIR)/interface.obj :  $(SOURCE)  $(INTDIR)
-   $(CPP) $(CPP_PROJ)  $(SOURCE) 
+   $(CPP) $(CPP_PROJ)  $(SOURCE)
 
 # End Source File
 ################################################################################
@@ -922,7 +922,7 @@ $(INTDIR)/mallocwrapper.obj :  $(SOURCE)  $(INTDIR)
 SOURCE=.\packages\parser.c
 
 $(INTDIR)/parser.obj :  $(SOURCE)  $(INTDIR)
-   $(CPP) $(CPP_PROJ)  $(SOURCE) 
+   $(CPP) $(CPP_PROJ)  $(SOURCE)
 
 # End Source File
 ################################################################################
@@ -931,7 +931,7 @@ $(INTDIR)/parser.obj :  $(SOURCE)  $(INTDIR)
 SOURCE=.\amiga\crypt.c
 
 $(INTDIR)/crypt.obj :  $(SOURCE)  $(INTDIR)
-   $(CPP) $(CPP_PROJ)  $(SOURCE) 
+   $(CPP) $(CPP_PROJ)  $(SOURCE)
 
 # End Source File
 ################################################################################
