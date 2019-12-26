@@ -7,6 +7,10 @@
 #include "/usr/include/postgresql/libpq-fe.h"
 #endif
 
+#ifdef USE_POSTGRES2
+#include "/usr/include/postgresql/libpq-fe.h"
+#endif
+
 #ifdef USE_MSQL
 /* MSQL v2 requires this so that it knows the right prototypes */
 #define _OS_UNIX
@@ -75,6 +79,14 @@ typedef union dbconn_u {
 		PGconn      *conn;
 		PGresult    *res;
 	} postgres;
+#endif
+#ifdef USE_POSTGRES2
+	struct tmp_postgres2 {
+		PGconn      *handle;
+		PGresult    *results;
+		char	    errormsg[256];
+		char	    res_status[256];
+	} postgres2;
 #endif
 #ifdef USE_MSQL
 	struct tmp_msql {
