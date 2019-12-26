@@ -21,6 +21,15 @@
  ****            Ajandurah@Demonslair added SQLite v2 support, defining
  ****            USE_SQLITE2 in local_options will enable it.
  ****
+ ****        Sometime:
+ ****            Postgres Support (Proof of Concept) was added.
+ ****            defining USE_POSTGRES in local_options will enable it.
+ ****
+ ****        Dec 2019:
+ ****            Adam@BlackDawn added Postgres Support the Rightway
+ ****            defining USE_POSTGRES2 in local_options will enable it.
+ ****
+ ****
  ****    Notes:
  ****      . This package has been restructured so that it can be compiled into
  ****        a driver without any database types defined so that you can write
@@ -79,553 +88,573 @@
 #ifdef PACKAGE_ASYNC
 #include <pthread.h>
 #endif
-static int  dbConnAlloc, dbConnUsed;
-static db_t *dbConnList;
+	static int  dbConnAlloc, dbConnUsed;
+	static db_t *dbConnList;
 
-db_t * find_db_conn (int);
-static int    create_db_conn (void);
-static void   free_db_conn (db_t *);
+	db_t * find_db_conn (int);
+	static int    create_db_conn (void);
+	static void   free_db_conn (db_t *);
 
 #ifdef USE_MSQL
-static int      msql_connect  (dbconn_t *, const char *, const char *, const char *, const char *);
-static int      msql_close    (dbconn_t *);
-static int      msql_execute  (dbconn_t *, const char *);
-static array_t *msql_fetch    (dbconn_t *, int);
-static void     msql_cleanup  (dbconn_t *);
-static char *   msql_errormsg (dbconn_t *);
+	static int      msql_connect  (dbconn_t *, const char *, const char *, const char *, const char *);
+	static int      msql_close    (dbconn_t *);
+	static int      msql_execute  (dbconn_t *, const char *);
+	static array_t *msql_fetch    (dbconn_t *, int);
+	static void     msql_cleanup  (dbconn_t *);
+	static char *   msql_errormsg (dbconn_t *);
 
-static db_defn_t msql = {
-		"mSQL", msql_connect, msql_close, msql_execute, msql_fetch, NULL, NULL, msql_cleanup, NULL, msql_errormsg
-};
+	static db_defn_t msql = {
+			"mSQL", msql_connect, msql_close, msql_execute, msql_fetch, NULL, NULL, msql_cleanup, NULL, msql_errormsg
+	};
 #endif
 
 #ifdef USE_MYSQL
-static int      MySQL_connect  (dbconn_t *, const char *, const char *, const char *, const char *);
-static int      MySQL_close    (dbconn_t *);
-static int      MySQL_execute  (dbconn_t *, const char *);
-static array_t *MySQL_fetch    (dbconn_t *, int);
-static void     MySQL_cleanup  (dbconn_t *);
-static char *   MySQL_errormsg (dbconn_t *);
+	static int      MySQL_connect  (dbconn_t *, const char *, const char *, const char *, const char *);
+	static int      MySQL_close    (dbconn_t *);
+	static int      MySQL_execute  (dbconn_t *, const char *);
+	static array_t *MySQL_fetch    (dbconn_t *, int);
+	static void     MySQL_cleanup  (dbconn_t *);
+	static char *   MySQL_errormsg (dbconn_t *);
 
-static db_defn_t mysql = {
-		"MySQL", MySQL_connect, MySQL_close, MySQL_execute, MySQL_fetch, NULL, NULL, MySQL_cleanup, NULL, MySQL_errormsg
-};
+	static db_defn_t mysql = {
+			"MySQL", MySQL_connect, MySQL_close, MySQL_execute, MySQL_fetch, NULL, NULL, MySQL_cleanup, NULL, MySQL_errormsg
+	};
 #endif
 
 #ifdef USE_POSTGRES
-static int      Postgres_connect  (dbconn_t *, const char *, const char *, const char *, const char *);
-static int      Postgres_close    (dbconn_t *);
-static int      Postgres_execute  (dbconn_t *, const char *);
-static array_t *Postgres_fetch    (dbconn_t *, int);
-static void     Postgres_cleanup  (dbconn_t *);
-static char *   Postgres_errormsg (dbconn_t *);
+	static int      Postgres_connect  (dbconn_t *, const char *, const char *, const char *, const char *);
+	static int      Postgres_close    (dbconn_t *);
+	static int      Postgres_execute  (dbconn_t *, const char *);
+	static array_t *Postgres_fetch    (dbconn_t *, int);
+	static void     Postgres_cleanup  (dbconn_t *);
+	static char *   Postgres_errormsg (dbconn_t *);
 
-static db_defn_t postgres = {
-  "Postgres", Postgres_connect, Postgres_close, Postgres_execute, Postgres_fetch, NULL, NULL, Postgres_cleanup, NULL, Postgres_errormsg
-};
+	static db_defn_t postgres = {
+	  "Postgres", Postgres_connect, Postgres_close, Postgres_execute, Postgres_fetch, NULL, NULL, Postgres_cleanup, NULL, Postgres_errormsg
+	};
+#endif
+
+#ifdef USE_POSTGRES2
+	static int      Postgres2_connect  (dbconn_t *, const char *, const char *, const char *, const char *);
+	static int      Postgres2_close    (dbconn_t *);
+	static int      Postgres2_execute  (dbconn_t *, const char *);
+	static array_t *Postgres2_fetch    (dbconn_t *, int);
+	static void     Postgres2_cleanup  (dbconn_t *);
+	static char *   Postgres2_errormsg (dbconn_t *);
+
+	static db_defn_t postgres2 = {
+	  "Postgres2", Postgres2_connect, Postgres2_close, Postgres2_execute, Postgres2_fetch, NULL, NULL, Postgres2_cleanup, NULL, Postgres2_errormsg
+	};
 #endif
 
 #ifdef USE_SQLITE2
-static int      SQLite2_connect   (dbconn_t *, const char *, const char *, const char *, const char *);
-static int      SQLite2_close     (dbconn_t *);
-static int      SQLite2_execute   (dbconn_t *, const char *);
-static array_t *SQLite2_fetch     (dbconn_t *, int);
-static void     SQLite2_cleanup   (dbconn_t *);
-static char *   SQLite2_errormsg  (dbconn_t *);
+	static int      SQLite2_connect   (dbconn_t *, const char *, const char *, const char *, const char *);
+	static int      SQLite2_close     (dbconn_t *);
+	static int      SQLite2_execute   (dbconn_t *, const char *);
+	static array_t *SQLite2_fetch     (dbconn_t *, int);
+	static void     SQLite2_cleanup   (dbconn_t *);
+	static char *   SQLite2_errormsg  (dbconn_t *);
 
-static db_defn_t SQLite2 = {
-		"SQLite2", SQLite2_connect, SQLite2_close, SQLite2_execute, SQLite2_fetch, NULL, NULL, SQLite2_cleanup, NULL, SQLite2_errormsg
-};
+	static db_defn_t SQLite2 = {
+			"SQLite2", SQLite2_connect, SQLite2_close, SQLite2_execute, SQLite2_fetch, NULL, NULL, SQLite2_cleanup, NULL, SQLite2_errormsg
+	};
 #endif
 
 #ifdef USE_SQLITE3
-static int      SQLite3_connect  (dbconn_t *, const char *, const char *, const char *, const char *);
-static int      SQLite3_close    (dbconn_t *);
-static int      SQLite3_execute  (dbconn_t *, const char *);
-static array_t *SQLite3_fetch    (dbconn_t *, int);
-static void     SQLite3_cleanup  (dbconn_t *);
-static char *   SQLite3_errormsg (dbconn_t *);
+	static int      SQLite3_connect  (dbconn_t *, const char *, const char *, const char *, const char *);
+	static int      SQLite3_close    (dbconn_t *);
+	static int      SQLite3_execute  (dbconn_t *, const char *);
+	static array_t *SQLite3_fetch    (dbconn_t *, int);
+	static void     SQLite3_cleanup  (dbconn_t *);
+	static char *   SQLite3_errormsg (dbconn_t *);
 
-static db_defn_t SQLite3 = {
-		"SQLite3", SQLite3_connect, SQLite3_close, SQLite3_execute, SQLite3_fetch, NULL, NULL, SQLite3_cleanup, NULL, SQLite3_errormsg
-};
+	static db_defn_t SQLite3 = {
+			"SQLite3", SQLite3_connect, SQLite3_close, SQLite3_execute, SQLite3_fetch, NULL, NULL, SQLite3_cleanup, NULL, SQLite3_errormsg
+	};
 #endif
 
-static db_defn_t no_db = {
-		"None", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
-};
+	static db_defn_t no_db = {
+			"None", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+	};
 
-/* valid_database
- *
- * Calls APPLY_VALID_DATABASE in the master object to provide some
- * security on which objects can tweak your database (we don't want
- * people doing "DELETE * FROM *" or equivalent for us)
- */
-svalue_t *valid_database (const char * action, array_t * info)
-{
-	svalue_t *ret;
-
-	/*
-	 * Call valid_database(object ob, string action, mixed *info)
+	/* valid_database
 	 *
-	 * Return: string - password for access
-	 *         int    - 1 for no password, accept, 0 deny
+	 * Calls APPLY_VALID_DATABASE in the master object to provide some
+	 * security on which objects can tweak your database (we don't want
+	 * people doing "DELETE * FROM *" or equivalent for us)
 	 */
-	push_object(current_object);
-	push_constant_string(action);
-	push_refed_array(info);
+	svalue_t *valid_database (const char * action, array_t * info)
+	{
+		svalue_t *ret;
 
-	ret = apply_master_ob(APPLY_VALID_DATABASE, 3);
-	if (ret && (ret == (svalue_t *)-1 || (ret->type == T_STRING || (ret->type == T_NUMBER && ret->u.number))))
-		return ret;
+		/*
+		 * Call valid_database(object ob, string action, mixed *info)
+		 *
+		 * Return: string - password for access
+		 *         int    - 1 for no password, accept, 0 deny
+		 */
+		push_object(current_object);
+		push_constant_string(action);
+		push_refed_array(info);
 
-	error("Database security violation attempted\n");
-}
+		ret = apply_master_ob(APPLY_VALID_DATABASE, 3);
+		if (ret && (ret == (svalue_t *)-1 || (ret->type == T_STRING || (ret->type == T_NUMBER && ret->u.number))))
+			return ret;
 
-/* int db_close(int handle);
- *
- * Closes the connection to the database represented by the named handle
- *
- * Returns 1 on success, 0 on failure
- */
+		error("Database security violation attempted\n");
+	}
+
+	/* int db_close(int handle);
+	 *
+	 * Closes the connection to the database represented by the named handle
+	 *
+	 * Returns 1 on success, 0 on failure
+	 */
 #ifdef F_DB_CLOSE
-void f_db_close (void)
-{
-	int ret = 0;
-	db_t *db;
+	void f_db_close (void)
+	{
+		int ret = 0;
+		db_t *db;
 
-	valid_database("close", &the_null_array);
+		valid_database("close", &the_null_array);
 
-	db = find_db_conn(sp->u.number);
-	if (!db) {
-		error("Attempt to close an invalid database handle\n");
-	}
-
-	/* Cleanup any memory structures left around */
-	if (db->type->cleanup) {
-		db->type->cleanup(&(db->c));
-	}
-
-	if (db->type->close) {
-		ret = db->type->close(&(db->c));
-	}
-
-	/* Remove the entry from the linked list */
-	free_db_conn(db);
-
-	sp->u.number = ret;
-}
-#endif
-
-/* int db_commit(int handle);
- *
- * Commits the last set of transactions to the database
- * NOTE: MSQL does not have transaction logic, so since
- * MSQL is the only thing supported now, this does nothing
- * I have put it in, however, so people can write properly
- * portable LPC code
- *
- * Returns 1 on success, 0 on failure
- */
-#ifdef F_DB_COMMIT
-void f_db_commit (void)
-{
-	int ret = 0;
-	db_t *db;
-
-	valid_database("commit", &the_null_array);
-
-	db = find_db_conn(sp->u.number);
-	if (!db) {
-		error("Attempt to commit an invalid database handle\n");
-	}
-
-	if (db->type->commit) {
-		ret = db->type->commit(&(db->c));
-	}
-
-	sp->u.number = ret;
-}
-#endif
-
-/* int db_connect(string host, string database, string user, int type)
- *
- * Creates a database connection to the database named by the
- * second argument found on the host named by the first argument.
- * Note that this means you can connect to database servers running on
- * machines other than the one on which the mud is running.  It will
- * connect based on settings established at compile time for the
- * user id and password (if required).
- *
- * Returns a new database handle.
- */
-#ifdef F_DB_CONNECT
-void f_db_connect (void)
-{
-	char *errormsg = 0;
-	const char *user = "", *database, *host;
-	db_t *db;
-	array_t *info;
-	svalue_t *mret;
-	int handle, ret = 0, args = 0, type;
-
-#ifdef DEFAULT_DB
-	type = DEFAULT_DB;
-#else
-	type = 0;
-#endif
-
-	switch (st_num_arg) {
-	case 4: type     = (sp - (args++))->u.number;
-	case 3: user     = (sp - (args++))->u.string;
-	case 2: database = (sp - (args++))->u.string;
-	case 1: host     = (sp - (args++))->u.string;
-	}
-
-	info = allocate_empty_array(3);
-	info->item[0].type = info->item[1].type = info->item[2].type = T_STRING;
-	info->item[0].subtype = info->item[1].subtype = info->item[2].subtype = STRING_MALLOC;
-	info->item[0].u.string = string_copy(database, "f_db_connect:1");
-	if (*host)
-		info->item[1].u.string = string_copy(host, "f_db_connect:2");
-	else
-		info->item[1] = const0;
-	info->item[2].u.string = string_copy(user, "f_db_connect:3");
-
-	mret = valid_database("connect", info);
-
-	handle = create_db_conn();
-	if (!handle) {
-		pop_n_elems(args);
-		push_number(0);
-		return;
-	}
-	db = find_db_conn(handle);
-
-	switch (type) {
-	default:
-		/* fallthrough */
-#ifdef USE_MSQL
-#if USE_MSQL - 0
-	case USE_MSQL:
-#endif
-		db->type = &msql;
-		break;
-#endif
-#ifdef USE_MYSQL
-#if USE_MYSQL - 0
-	case USE_MYSQL:
-#endif
-		db->type = &mysql;
-		break;
-#endif
-#ifdef USE_SQLITE2
-#if USE_SQLITE2 - 0
-	case USE_SQLITE2:
-#endif
-		db->type = &SQLite2;
-		break;
-#endif
-#ifdef USE_SQLITE3
-#if USE_SQLITE3 - 0
-	case USE_SQLITE3:
-#endif
-		db->type = &SQLite3;
-		break;
-#endif
-#ifdef USE_POSTGRES
-#if USE_POSTGRES - 0
-	case USE_POSTGRES:
-#endif
-		db->type = &postgres;
-		break;
-#endif
-	}
-
-	if (db->type->connect) {
-		ret = db->type->connect(&(db->c), host, database, user,
-				(mret != (svalue_t *)-1 && mret->type == T_STRING ? mret->u.string : 0));
-	}
-
-	pop_n_elems(args);
-
-	if (!ret) {
-		if (db->type->error) {
-			errormsg = db->type->error(&(db->c));
-			push_malloced_string(errormsg);
-		} else {
-			push_number(0);
+		db = find_db_conn(sp->u.number);
+		if (!db) {
+			error("Attempt to close an invalid database handle\n");
 		}
-		free_db_conn(db);
-	} else {
-		push_number(handle);
-	}
-}
-#endif
 
-/* mixed db_exec(int handle, string sql)
- *
- * Executes the SQL statement passed for the named connection handle.
- * If data needs to be retrieved from this execution, it should be done
- * through db_fetch() after making the call to db_exec()
- *
- * Returns number of rows in result set on success, an error string on failure
- * NOTE: the number of rows on INSERT, UPDATE, and DELETE statements will
- * be zero since there is no result set.
- */
-#ifdef PACKAGE_ASYNC
-extern pthread_mutex_t *db_mut;
-#endif
-#ifdef F_DB_EXEC
-void f_db_exec (void)
-{
-	int ret = 0;
-	db_t *db;
-	array_t *info;
-	info = allocate_empty_array(1);
-	info->item[0].type = T_STRING;
-	info->item[0].subtype = STRING_MALLOC;
-	info->item[0].u.string = string_copy(sp->u.string, "f_db_exec");
-	valid_database("exec", info);
-
-	db = find_db_conn((sp-1)->u.number);
-	if (!db) {
-		error("Attempt to exec on an invalid database handle\n");
-	}
-
-#ifdef PACKAGE_ASYNC
-	if(!db_mut){
-		db_mut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-		pthread_mutex_init(db_mut, NULL);
-	}
-	pthread_mutex_lock(db_mut);
-#endif
-	if (db->type->cleanup) {
-		db->type->cleanup(&(db->c));
-	}
-
-	if (db->type->execute) {
-		ret = db->type->execute(&(db->c), sp->u.string);
-	}
-
-	pop_stack();
-	if (ret == -1) {
-		if (db->type->error) {
-			char *errormsg;
-
-			errormsg = db->type->error(&(db->c));
-			put_malloced_string(errormsg);
-		} else {
-			put_constant_string("Unknown error");
-		}
-	} else {
-		sp->u.number = ret;
-	}
-#ifdef PACKAGE_ASYNC
-	pthread_mutex_unlock(db_mut);
-#endif
-}
-#endif
-
-/* array db_fetch(int db_handle, int row);
- *
- * Returns the result set from the last database transaction
- * performed through db_exec() on the db handle in question for the row
- * named.  For example, db_exec(10, "SELECT player_name from t_player") might
- * have returned two rows.  Typical code to extract that data might be:
- *     string *res;
- *     mixed rows;
- *     int dbconn, i;
- *
- *     dbconn = db_connect("nightmare.imaginary.com", "db_mud");
- *     if( dbconn < 1 ) return 0;
- *     rows = db_exec(dbconn, "SELECT player_name from t_player");
- *     if( !rows ) write("No rows returned.");
- *     else if( stringp(rows) ) write(rows);
- *     else for(i=1; i<=rows; i++) {
- *         res = db_fetch(dbconn, i);
- *         write(res[0]);
- *     }
- *     db_close(dbconn);
- *     return 1;
- *
- * Returns an array of columns from the named row on success.
- */
-#ifdef F_DB_FETCH
-void f_db_fetch (void)
-{
-	db_t *db;
-	array_t *ret;
-
-	valid_database("fetch", &the_null_array);
-
-	db = find_db_conn((sp-1)->u.number);
-	if (!db) {
-		error("Attempt to fetch from an invalid database handle\n");
-	}
-
-	if (db->type->fetch) {
-		ret = db->type->fetch(&(db->c), sp->u.number);
-	} else {
-		ret = &the_null_array;
-	}
-
-	pop_stack();
-	if (!ret) {
-		if (db->type->error) {
-			char *errormsg;
-
-			errormsg = db->type->error(&(db->c));
-			put_malloced_string(errormsg);
-		} else {
-			sp->u.number = 0;
-		}
-	} else {
-		put_array(ret);
-	}
-}
-#endif
-
-/* int db_rollback(int handle)
- *
- * Rollsback all db_exec() calls back to the last db_commit() call for the
- * named connection handle.
- * NOTE: MSQL does not support rollbacks
- *
- * Returns 1 on success, 0 on failure
- */
-#ifdef F_DB_ROLLBACK
-void f_db_rollback (void)
-{
-	int ret = 0;
-	db_t *db;
-
-	valid_database("rollback", &the_null_array);
-
-	db = find_db_conn(sp->u.number);
-	if (!db) {
-		error("Attempt to rollback an invalid database handle\n");
-	}
-
-	if (db->type->rollback) {
-		ret = db->type->rollback(&(db->c));
-	}
-
-	if (ret > 0) {
+		/* Cleanup any memory structures left around */
 		if (db->type->cleanup) {
 			db->type->cleanup(&(db->c));
 		}
-	}
 
-	sp->u.number = ret;
-}
+		if (db->type->close) {
+			ret = db->type->close(&(db->c));
+		}
+
+		/* Remove the entry from the linked list */
+		free_db_conn(db);
+
+		sp->u.number = ret;
+	}
 #endif
 
-/* string db_status()
- *
- * Returns a string describing the database package's current status
- */
-#ifdef F_DB_STATUS
-void f_db_status (void)
-{
-	int i;
-	outbuffer_t out;
+	/* int db_commit(int handle);
+	 *
+	 * Commits the last set of transactions to the database
+	 * NOTE: MSQL does not have transaction logic, so since
+	 * MSQL is the only thing supported now, this does nothing
+	 * I have put it in, however, so people can write properly
+	 * portable LPC code
+	 *
+	 * Returns 1 on success, 0 on failure
+	 */
+#ifdef F_DB_COMMIT
+	void f_db_commit (void)
+	{
+		int ret = 0;
+		db_t *db;
 
-	outbuf_zero(&out);
+		valid_database("commit", &the_null_array);
 
-	for (i = 0;  i < dbConnAlloc;  i++) {
-		if (dbConnList[i].flags & DB_FLAG_EMPTY) {
-			continue;
+		db = find_db_conn(sp->u.number);
+		if (!db) {
+			error("Attempt to commit an invalid database handle\n");
 		}
 
-		outbuf_addv(&out, "Handle: %d (%s)\n", i + 1, dbConnList[i].type->name);
-		if (dbConnList[i].type->status != NULL) {
-			dbConnList[i].type->status(&(dbConnList[i].c), &out);
+		if (db->type->commit) {
+			ret = db->type->commit(&(db->c));
 		}
+
+		sp->u.number = ret;
 	}
-
-	outbuf_push(&out);
-}
 #endif
 
-void db_cleanup (void)
-{
-	int i;
+	/* int db_connect(string host, string database, string user, int type)
+	 *
+	 * Creates a database connection to the database named by the
+	 * second argument found on the host named by the first argument.
+	 * Note that this means you can connect to database servers running on
+	 * machines other than the one on which the mud is running.  It will
+	 * connect based on settings established at compile time for the
+	 * user id and password (if required).
+	 *
+	 * Returns a new database handle.
+	 */
+#ifdef F_DB_CONNECT
+	void f_db_connect (void)
+	{
+		char *errormsg = 0;
+		const char *user = "", *database, *host;
+		db_t *db;
+		array_t *info;
+		svalue_t *mret;
+		int handle, ret = 0, args = 0, type;
 
-	for (i = 0;  i < dbConnAlloc;  i++) {
-		if (!(dbConnList[i].flags & DB_FLAG_EMPTY)) {
-			if (dbConnList[i].type->cleanup) {
-				dbConnList[i].type->cleanup(&(dbConnList[i].c));
-			}
-
-			if (dbConnList[i].type->close) {
-				dbConnList[i].type->close(&(dbConnList[i].c));
-			}
-
-			dbConnList[i].flags = DB_FLAG_EMPTY;
-			dbConnUsed--;
-		}
-	}
-}
-
-int create_db_conn (void)
-{
-	int i;
-
-	/* allocate more slots if we need them */
-	if (dbConnAlloc == dbConnUsed) {
-		i = dbConnAlloc;
-		dbConnAlloc += 10;
-		if (!dbConnList) {
-			dbConnList = CALLOCATE(dbConnAlloc, db_t, TAG_DB, "create_db_conn");
-		} else {
-#ifdef PACKAGE_ASYNC
-			pthread_mutex_lock(db_mut);
+#ifdef DEFAULT_DB
+		type = DEFAULT_DB;
+#else
+		type = 0;
 #endif
-			dbConnList = RESIZE(dbConnList, dbConnAlloc, db_t, TAG_DB, "create_db_conn");
-#ifdef PACKAGE_ASYNC
-			pthread_mutex_unlock(db_mut);
+
+		switch (st_num_arg) {
+		case 4: type     = (sp - (args++))->u.number;
+		case 3: user     = (sp - (args++))->u.string;
+		case 2: database = (sp - (args++))->u.string;
+		case 1: host     = (sp - (args++))->u.string;
+		}
+
+		info = allocate_empty_array(3);
+		info->item[0].type = info->item[1].type = info->item[2].type = T_STRING;
+		info->item[0].subtype = info->item[1].subtype = info->item[2].subtype = STRING_MALLOC;
+		info->item[0].u.string = string_copy(database, "f_db_connect:1");
+		if (*host)
+			info->item[1].u.string = string_copy(host, "f_db_connect:2");
+		else
+			info->item[1] = const0;
+		info->item[2].u.string = string_copy(user, "f_db_connect:3");
+
+		mret = valid_database("connect", info);
+
+		handle = create_db_conn();
+		if (!handle) {
+			pop_n_elems(args);
+			push_number(0);
+			return;
+		}
+		db = find_db_conn(handle);
+
+		switch (type) {
+			defaut:
+			/* fallthrough */
+#ifdef USE_MSQL
+#if USE_MSQL - 0
+		case USE_MSQL:
 #endif
-		}
-    while (i < dbConnAlloc) {
-      dbConnList[i++].flags = DB_FLAG_EMPTY;
-    }
-  }
-
-	for (i = 0;  i < dbConnAlloc;  i++) {
-		if (dbConnList[i].flags & DB_FLAG_EMPTY) {
-			dbConnList[i].flags = 0;
-			dbConnList[i].type = &no_db;
-			dbConnUsed++;
-			return i + 1;
-		}
-	}
-
-	fatal("dbConnAlloc != dbConnUsed, but no empty slots");
-}
-
-db_t *find_db_conn (int handle)
-{
-	if (handle < 1 || handle > dbConnAlloc || dbConnList[handle - 1].flags & DB_FLAG_EMPTY)
-		return 0;
-	return &(dbConnList[handle - 1]);
-}
-
-void free_db_conn (db_t * db)
-{
-	DEBUG_CHECK(db->flags & DB_FLAG_EMPTY, "Freeing DB connection that is already freed\n");
-	DEBUG_CHECK(!dbConnUsed, "Freeing DB connection when dbConnUsed == 0\n");
-	dbConnUsed--;
-	db->flags |= DB_FLAG_EMPTY;
-}
-
-/*
- * MySQL support
- */
+			db->type = &msql;
+			break;
+#endif
 #ifdef USE_MYSQL
-static void MySQL_cleanup (dbconn_t * c)
-{
-	*(c->mysql.errormsg) = 0;
+#if USE_MYSQL - 0
+		case USE_MYSQL:
+#endif
+			db->type = &mysql;
+			break;
+#endif
+#ifdef USE_SQLITE2
+#if USE_SQLITE2 - 0
+		case USE_SQLITE2:
+#endif
+			db->type = &SQLite2;
+			break;
+#endif
+#ifdef USE_SQLITE3
+#if USE_SQLITE3 - 0
+		case USE_SQLITE3:
+#endif
+			db->type = &SQLite3;
+			break;
+#endif
+#ifdef USE_POSTGRES
+#if USE_POSTGRES - 0
+		case USE_POSTGRES:
+#endif
+			db->type = &postgres;
+			break;
+#endif
+#ifdef USE_POSTGRES2
+#if USE_POSTGRES2 - 0
+		case USE_POSTGRES2:
+#endif
+			db->type = &postgres2;
+			break;
+#endif
+		}
+
+		if (db->type->connect) {
+			ret = db->type->connect(&(db->c), host, database, user,
+					(mret != (svalue_t *)-1 && mret->type == T_STRING ? mret->u.string : 0));
+		}
+
+		pop_n_elems(args);
+
+		if (!ret) {
+			if (db->type->error) {
+				errormsg = db->type->error(&(db->c));
+				push_malloced_string(errormsg);
+			} else {
+				push_number(0);
+			}
+			free_db_conn(db);
+		} else {
+			push_number(handle);
+		}
+	}
+#endif
+
+	/* mixed db_exec(int handle, string sql)
+	 *
+	 * Executes the SQL statement passed for the named connection handle.
+	 * If data needs to be retrieved from this execution, it should be done
+	 * through db_fetch() after making the call to db_exec()
+	 *
+	 * Returns number of rows in result set on success, an error string on failure
+	 * NOTE: the number of rows on INSERT, UPDATE, and DELETE statements will
+	 * be zero since there is no result set.
+	 */
+#ifdef PACKAGE_ASYNC
+	extern pthread_mutex_t *db_mut;
+#endif
+#ifdef F_DB_EXEC
+	void f_db_exec (void)
+	{
+		int ret = 0;
+		db_t *db;
+		array_t *info;
+		info = allocate_empty_array(1);
+		info->item[0].type = T_STRING;
+		info->item[0].subtype = STRING_MALLOC;
+		info->item[0].u.string = string_copy(sp->u.string, "f_db_exec");
+		valid_database("exec", info);
+
+		db = find_db_conn((sp-1)->u.number);
+		if (!db) {
+			error("Attempt to exec on an invalid database handle\n");
+		}
+
+#ifdef PACKAGE_ASYNC
+		if(!db_mut){
+			db_mut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+			pthread_mutex_init(db_mut, NULL);
+		}
+		pthread_mutex_lock(db_mut);
+#endif
+		if (db->type->cleanup) {
+			db->type->cleanup(&(db->c));
+		}
+
+		if (db->type->execute) {
+			ret = db->type->execute(&(db->c), sp->u.string);
+		}
+
+		pop_stack();
+		if (ret == -1) {
+			if (db->type->error) {
+				char *errormsg;
+
+				errormsg = db->type->error(&(db->c));
+				put_malloced_string(errormsg);
+			} else {
+				put_constant_string("Unknown error");
+			}
+		} else {
+			sp->u.number = ret;
+		}
+#ifdef PACKAGE_ASYNC
+		pthread_mutex_unlock(db_mut);
+#endif
+	}
+#endif
+
+	/* array db_fetch(int db_handle, int row);
+	 *
+	 * Returns the result set from the last database transaction
+	 * performed through db_exec() on the db handle in question for the row
+	 * named.  For example, db_exec(10, "SELECT player_name from t_player") might
+	 * have returned two rows.  Typical code to extract that data might be:
+	 *     string *res;
+	 *     mixed rows;
+	 *     int dbconn, i;
+	 *
+	 *     dbconn = db_connect("nightmare.imaginary.com", "db_mud");
+	 *     if( dbconn < 1 ) return 0;
+	 *     rows = db_exec(dbconn, "SELECT player_name from t_player");
+	 *     if( !rows ) write("No rows returned.");
+	 *     else if( stringp(rows) ) write(rows);
+	 *     else for(i=1; i<=rows; i++) {
+	 *         res = db_fetch(dbconn, i);
+	 *         write(res[0]);
+	 *     }
+	 *     db_close(dbconn);
+	 *     return 1;
+	 *
+	 * Returns an array of columns from the named row on success.
+	 */
+#ifdef F_DB_FETCH
+	void f_db_fetch (void)
+	{
+		db_t *db;
+		array_t *ret;
+
+		valid_database("fetch", &the_null_array);
+
+		db = find_db_conn((sp-1)->u.number);
+		if (!db) {
+			error("Attempt to fetch from an invalid database handle\n");
+		}
+
+		if (db->type->fetch) {
+			ret = db->type->fetch(&(db->c), sp->u.number);
+		} else {
+			ret = &the_null_array;
+		}
+
+		pop_stack();
+		if (!ret) {
+			if (db->type->error) {
+				char *errormsg;
+
+				errormsg = db->type->error(&(db->c));
+				put_malloced_string(errormsg);
+			} else {
+				sp->u.number = 0;
+			}
+		} else {
+			put_array(ret);
+		}
+	}
+#endif
+
+	/* int db_rollback(int handle)
+	 *
+	 * Rollsback all db_exec() calls back to the last db_commit() call for the
+	 * named connection handle.
+	 * NOTE: MSQL does not support rollbacks
+	 *
+	 * Returns 1 on success, 0 on failure
+	 */
+#ifdef F_DB_ROLLBACK
+	void f_db_rollback (void)
+	{
+		int ret = 0;
+		db_t *db;
+
+		valid_database("rollback", &the_null_array);
+
+		db = find_db_conn(sp->u.number);
+		if (!db) {
+			error("Attempt to rollback an invalid database handle\n");
+		}
+
+		if (db->type->rollback) {
+			ret = db->type->rollback(&(db->c));
+		}
+
+		if (ret > 0) {
+			if (db->type->cleanup) {
+				db->type->cleanup(&(db->c));
+			}
+		}
+
+		sp->u.number = ret;
+	}
+#endif
+
+	/* string db_status()
+	 *
+	 * Returns a string describing the database package's current status
+	 */
+#ifdef F_DB_STATUS
+	void f_db_status (void)
+	{
+		int i;
+		outbuffer_t out;
+
+		outbuf_zero(&out);
+
+		for (i = 0;  i < dbConnAlloc;  i++) {
+			if (dbConnList[i].flags & DB_FLAG_EMPTY) {
+				continue;
+			}
+
+			outbuf_addv(&out, "Handle: %d (%s)\n", i + 1, dbConnList[i].type->name);
+			if (dbConnList[i].type->status != NULL) {
+				dbConnList[i].type->status(&(dbConnList[i].c), &out);
+			}
+		}
+
+		outbuf_push(&out);
+	}
+#endif
+
+	void db_cleanup (void)
+	{
+		int i;
+
+		for (i = 0;  i < dbConnAlloc;  i++) {
+			if (!(dbConnList[i].flags & DB_FLAG_EMPTY)) {
+				if (dbConnList[i].type->cleanup) {
+					dbConnList[i].type->cleanup(&(dbConnList[i].c));
+				}
+
+				if (dbConnList[i].type->close) {
+					dbConnList[i].type->close(&(dbConnList[i].c));
+				}
+
+				dbConnList[i].flags = DB_FLAG_EMPTY;
+				dbConnUsed--;
+			}
+		}
+	}
+
+	int create_db_conn (void)
+	{
+		int i;
+
+		/* allocate more slots if we need them */
+		if (dbConnAlloc == dbConnUsed) {
+			i = dbConnAlloc;
+			dbConnAlloc += 10;
+			if (!dbConnList) {
+				dbConnList = CALLOCATE(dbConnAlloc, db_t, TAG_DB, "create_db_conn");
+			} else {
+#ifdef PACKAGE_ASYNC
+				pthread_mutex_lock(db_mut);
+#endif
+				dbConnList = RESIZE(dbConnList, dbConnAlloc, db_t, TAG_DB, "create_db_conn");
+#ifdef PACKAGE_ASYNC
+				pthread_mutex_unlock(db_mut);
+#endif
+			}
+	    while (i < dbConnAlloc) {
+	      dbConnList[i++].flags = DB_FLAG_EMPTY;
+	    }
+	  }
+
+		for (i = 0;  i < dbConnAlloc;  i++) {
+			if (dbConnList[i].flags & DB_FLAG_EMPTY) {
+				dbConnList[i].flags = 0;
+				dbConnList[i].type = &no_db;
+				dbConnUsed++;
+				return i + 1;
+			}
+		}
+
+		fatal("dbConnAlloc != dbConnUsed, but no empty slots");
+	}
+
+	db_t *find_db_conn (int handle)
+	{
+		if (handle < 1 || handle > dbConnAlloc || dbConnList[handle - 1].flags & DB_FLAG_EMPTY)
+			return 0;
+		return &(dbConnList[handle - 1]);
+	}
+
+	void free_db_conn (db_t * db)
+	{
+		DEBUG_CHECK(db->flags & DB_FLAG_EMPTY, "Freeing DB connection that is already freed\n");
+		DEBUG_CHECK(!dbConnUsed, "Freeing DB connection when dbConnUsed == 0\n");
+		dbConnUsed--;
+		db->flags |= DB_FLAG_EMPTY;
+	}
+
+	/*
+	 * MySQL support
+	 */
+#ifdef USE_MYSQL
+	static void MySQL_cleanup (dbconn_t * c)
+	{
+		*(c->mysql.errormsg) = 0;
 	if (c->mysql.results) {
 		mysql_free_result(c->mysql.results);
 		c->mysql.results = 0;
@@ -931,7 +960,7 @@ static char *msql_errormsg (dbconn_t * c)
  */
 #ifdef USE_SQLITE2
 static int SQLite2_connect (dbconn_t * c, const char * host, const char * database, const char * username, const char * password)
-{    
+{
 	c->SQLite2.handle = sqlite_open(database, 0666, &c->SQLite2.errormsg);
 	if (!c->SQLite2.handle) {
 		sqlite_close(c->SQLite2.handle);
@@ -1182,14 +1211,14 @@ static array_t *SQLite2_fetch (dbconn_t * c, int row)
 static char *SQLite2_errormsg (dbconn_t * c)
 {
 	return string_copy(c->SQLite2.errormsg, "SQLite2_errormsg");
-}        
+}
 #endif
 
 
 /*
  * SQLite v3 support
  * ajandurah@demonslair (Mark Lyndoe)
- */ 
+ */
 #ifdef USE_SQLITE3
 static int SQLite3_connect (dbconn_t * c, const char * host, const char * database, const char * username, const char * password)
 {
@@ -1391,10 +1420,11 @@ static char *SQLite3_errormsg (dbconn_t * c)
 	}
 
 	return string_copy((char *)sqlite3_errmsg(c->SQLite3.handle), "SQLite3_errormsg:2");
-}   
+}
 #endif
+
  /*
-  * Postgres support
+  * Postgres support (Proof of Concept) - USE_POSTGRES
   */
 #ifdef USE_POSTGRES
 static void Postgres_cleanup (dbconn_t * c)
@@ -1493,4 +1523,309 @@ static array_t *Postgres_fetch (dbconn_t * c, int row)
 	}
 	return v;
 }
+#endif
+
+/*
+ * Postgres support - USE_POSTGRES2
+ * Adam@BlackDawn - 23/12/2019 - Merry Christmas
+ */
+#ifdef USE_POSTGRES2
+/* TEMP SHIT - My LIBPQ is missing the OID defines?!?! */
+#define BOOLOID 16
+#define BYTEAOID 17
+#define CHAROID 18
+#define NAMEOID 19
+#define INT8OID 20
+#define INT2OID 21
+#define INT2VECTOROID 22
+#define INT4OID 23
+#define REGPROCOID 24
+#define TEXTOID 25
+#define OIDOID 26
+#define TIDOID 27
+#define XIDOID 28
+#define CIDOID 29
+#define OIDVECTOROID 30
+#define JSONOID 114
+#define XMLOID 142
+#define PGNODETREEOID 194
+#define PGNDISTINCTOID 3361
+#define PGDEPENDENCIESOID 3402
+#define PGMCVLISTOID 5017
+#define PGDDLCOMMANDOID 32
+#define POINTOID 600
+#define LSEGOID 601
+#define PATHOID 602
+#define BOXOID 603
+#define POLYGONOID 604
+#define LINEOID 628
+#define FLOAT4OID 700
+#define FLOAT8OID 701
+#define UNKNOWNOID 705
+#define CIRCLEOID 718
+#define CASHOID 790
+#define MACADDROID 829
+#define INETOID 869
+#define CIDROID 650
+#define MACADDR8OID 774
+#define ACLITEMOID 1033
+#define BPCHAROID 1042
+#define VARCHAROID 1043
+#define DATEOID 1082
+#define TIMEOID 1083
+#define TIMESTAMPOID 1114
+#define TIMESTAMPTZOID 1184
+#define INTERVALOID 1186
+#define TIMETZOID 1266
+#define BITOID 1560
+#define VARBITOID 1562
+#define NUMERICOID 1700
+#define REFCURSOROID 1790
+#define REGPROCEDUREOID 2202
+#define REGOPEROID 2203
+#define REGOPERATOROID 2204
+#define REGCLASSOID 2205
+#define REGTYPEOID 2206
+#define REGROLEOID 4096
+#define REGNAMESPACEOID 4089
+#define UUIDOID 2950
+#define LSNOID 3220
+#define TSVECTOROID 3614
+#define GTSVECTOROID 3642
+#define TSQUERYOID 3615
+#define REGCONFIGOID 3734
+#define REGDICTIONARYOID 3769
+#define JSONBOID 3802
+#define JSONPATHOID 4072
+#define TXID_SNAPSHOTOID 2970
+#define INT4RANGEOID 3904
+#define NUMRANGEOID 3906
+#define TSRANGEOID 3908
+#define TSTZRANGEOID 3910
+#define DATERANGEOID 3912
+#define INT8RANGEOID 3926
+#define RECORDOID 2249
+#define RECORDARRAYOID 2287
+#define CSTRINGOID 2275
+#define ANYOID 2276
+#define ANYARRAYOID 2277
+#define VOIDOID 2278
+#define TRIGGEROID 2279
+#define EVTTRIGGEROID 3838
+#define LANGUAGE_HANDLEROID 2280
+#define INTERNALOID 2281
+#define OPAQUEOID 2282
+#define ANYELEMENTOID 2283
+#define ANYNONARRAYOID 2776
+#define ANYENUMOID 3500
+#define FDW_HANDLEROID 3115
+#define INDEX_AM_HANDLEROID 325
+#define TSM_HANDLEROID 3310
+#define TABLE_AM_HANDLEROID 269
+#define ANYRANGEOID 3831
+#define BOOLARRAYOID 1000
+#define BYTEAARRAYOID 1001
+#define CHARARRAYOID 1002
+#define NAMEARRAYOID 1003
+#define INT8ARRAYOID 1016
+#define INT2ARRAYOID 1005
+#define INT2VECTORARRAYOID 1006
+#define INT4ARRAYOID 1007
+#define REGPROCARRAYOID 1008
+#define TEXTARRAYOID 1009
+#define OIDARRAYOID 1028
+#define TIDARRAYOID 1010
+#define XIDARRAYOID 1011
+#define CIDARRAYOID 1012
+#define OIDVECTORARRAYOID 1013
+#define JSONARRAYOID 199
+#define XMLARRAYOID 143
+#define POINTARRAYOID 1017
+#define LSEGARRAYOID 1018
+#define PATHARRAYOID 1019
+#define BOXARRAYOID 1020
+#define POLYGONARRAYOID 1027
+#define LINEARRAYOID 629
+#define FLOAT4ARRAYOID 1021
+#define FLOAT8ARRAYOID 1022
+#define CIRCLEARRAYOID 719
+#define MONEYARRAYOID 791
+#define MACADDRARRAYOID 1040
+#define INETARRAYOID 1041
+#define CIDRARRAYOID 651
+#define MACADDR8ARRAYOID 775
+#define ACLITEMARRAYOID 1034
+#define BPCHARARRAYOID 1014
+#define VARCHARARRAYOID 1015
+#define DATEARRAYOID 1182
+#define TIMEARRAYOID 1183
+#define TIMESTAMPARRAYOID 1115
+#define TIMESTAMPTZARRAYOID 1185
+#define INTERVALARRAYOID 1187
+#define TIMETZARRAYOID 1270
+#define BITARRAYOID 1561
+#define VARBITARRAYOID 1563
+#define NUMERICARRAYOID 1231
+#define REFCURSORARRAYOID 2201
+#define REGPROCEDUREARRAYOID 2207
+#define REGOPERARRAYOID 2208
+#define REGOPERATORARRAYOID 2209
+#define REGCLASSARRAYOID 2210
+#define REGTYPEARRAYOID 2211
+#define REGROLEARRAYOID 4097
+#define REGNAMESPACEARRAYOID 4090
+#define UUIDARRAYOID 2951
+#define PG_LSNARRAYOID 3221
+#define TSVECTORARRAYOID 3643
+#define GTSVECTORARRAYOID 3644
+#define TSQUERYARRAYOID 3645
+#define REGCONFIGARRAYOID 3735
+#define REGDICTIONARYARRAYOID 3770
+#define JSONBARRAYOID 3807
+#define JSONPATHARRAYOID 4073
+#define TXID_SNAPSHOTARRAYOID 2949
+#define INT4RANGEARRAYOID 3905
+#define NUMRANGEARRAYOID 3907
+#define TSRANGEARRAYOID 3909
+#define TSTZRANGEARRAYOID 3911
+#define DATERANGEARRAYOID 3913
+#define INT8RANGEARRAYOID 3927
+#define CSTRINGARRAYOID 1263
+
+/* END - TEMP SHIT */
+
+static int Postgres2_connect (dbconn_t * c, const char * host, const char * database, const char * username, const char * password) {
+	char connect_string[LARGEST_PRINTABLE_STRING] = "\0\0\0\0\0\0\0";
+
+	snprintf(connect_string, LARGEST_PRINTABLE_STRING, "host=%s dbname=%s user=%s password=%s", host, database, username, password);
+	c->postgres2.handle = PQconnectdb(connect_string);
+
+	if( (PQstatus(c->postgres2.handle) != CONNECTION_OK) ) {
+		return 0;
+	}
+
+	return 1;
+}
+
+static void Postgres2_cleanup (dbconn_t * c) {
+	// *(c->postgres2.errormsg)= NULL;
+	
+	// Adam: to emtpy the array 
+	//memset(*(c->postgres2.errormsg), 0, sizeof(*(c->postgres2.errormsg)));
+	if (c->postgres2.results) {
+		PQclear(c->postgres2.results);
+		c->postgres2.results = NULL;
+		*(c->postgres2.res_status) = '\0';
+
+		// Adam: to empty the array
+		// memset(*(c->postgres
+	}
+}
+
+static char *Postgres2_errormsg (dbconn_t * c) {
+	if (*(c->postgres2.errormsg)) {
+		// Temp change from errormsg to handle
+		return string_copy((char *)PQerrorMessage(c->postgres2.handle), "pgsql2_errormsg:1");
+	}
+
+	return string_copy((char *)PQerrorMessage(c->postgres2.handle), "pgsql2_errormsg:2");
+}
+
+static int Postgres2_close (dbconn_t * c) {
+	PQfinish(c->postgres2.handle);
+	free(c->postgres2.handle);
+	c->postgres2.handle = NULL;
+
+	return 1;
+}
+
+static int Postgres2_execute (dbconn_t * c, const char * s) {
+
+	c->postgres2.results = PQexec(c->postgres2.handle, s);
+	*c->postgres2.res_status = PQresultStatus(c->postgres2.results);
+
+	if (*(c->postgres2.res_status) != PGRES_COMMAND_OK && *(c->postgres2.res_status) != PGRES_TUPLES_OK && *(c->postgres2.res_status) != PGRES_SINGLE_TUPLE ) {
+		// Added by special request of Quixahal@WileyMud
+		PQclear(c->postgres2.results);
+		c->postgres2.results = NULL;
+		return -1;
+	}
+
+	return PQntuples(c->postgres2.results);
+}
+
+static array_t *Postgres2_fetch (dbconn_t * c, int row) {
+	array_t *v;
+	int i, num_fields, field;
+
+	if (!c->postgres2.results) {
+		return &the_null_array;
+	}
+
+	if (row < -1 || row > PQntuples(c->postgres2.results)) {
+		return &the_null_array;
+	}
+
+	num_fields = PQnfields(c->postgres2.results);
+	if (num_fields < 1) {
+		return &the_null_array;
+	}
+
+	if(row==-1) {
+		v = allocate_empty_array(num_fields);
+
+		for( i = 0;i < num_fields; i++ ) {
+			v->item[i].type = T_STRING;
+			v->item[i].subtype = STRING_MALLOC;
+			v->item[i].u.string = string_copy(PQfname(c->postgres2.results,i), "f_db_fetch");
+		}
+	}
+
+	if (row >= 0) {
+		v = allocate_empty_array(num_fields);
+
+		for (i = 0;i < num_fields;i++) {
+			field = PQftype(c->postgres2.results, i); 
+			if (PQgetisnull(c->postgres2.results, row, i)) {
+				v->item[i] = const0u;
+			} else {
+				switch (field) {
+					case INT2OID:
+					case INT4OID:
+					case INT8OID:
+						v->item[i].type = T_NUMBER;
+						v->item[i].subtype = 0;
+						v->item[i].u.number = atoi(PQgetvalue(c->postgres2.results,row,i));
+						break;
+
+					case FLOAT4OID:
+					case FLOAT8OID:
+						v->item[i].type = T_REAL;
+						v->item[i].u.real = atoi(PQgetvalue(c->postgres2.results,row,i));
+						break;
+
+#ifndef NO_BUFFER_TYPE
+					case BYTEAARRAYOID:
+						v->item[i].type = T_BUFFER;
+						v->item[i].u.buf = allocate_buffer(PQgetlength(c->postgres2.results,row,i));
+						write_buffer(v->item[i].u.buf, 0, PQgetvalue(c->postgres2.results,row,i), PQgetlength(c->postgres2.results,row,i));
+#endif
+					case CHAROID:
+					case VARCHAROID:
+					case TEXTOID:
+						v->item[i].type = T_STRING;
+						v->item[i].subtype = STRING_MALLOC;
+						v->item[i].u.string = string_copy(PQgetvalue(c->postgres2.results,row,i), "postgres2_fetch");
+
+					default:
+						v->item[i] = const0u;
+						break;
+						break;
+					}
+				}
+			}
+		}
+return v;
+}
+
 #endif
