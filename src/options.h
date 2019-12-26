@@ -688,17 +688,41 @@
 #define NUM_EXTERNAL_CMDS 100
 #endif
 
-/* PACKAGE_DB: efuns for external database access using msql */
+/* PACKAGE_DB: efuns for external database */
 #undef PACKAGE_DB
 
 /* If PACKAGE_DB is defined above, you must pick ONE of the following supported
- * databases
+ * databases:
+ * USE_MSQL : mSQL / Mini mSQL
+ * USE_MYSQL : MariaDB or Oracle MYSQL
+ * USE_POSTGRES : Postgres (Old) - Unknown Author
+ * USE_POSTGRES2 : Postgres - New Written for Postgres 11/12
+ * USE_SQLITE2 : SQLite2
+ * USE_SQLITE3 : SQLite3
+ *
+ *  Support for multiple database types is present, if obscure.  When
+ *  you have multiple types you should have DEFAULT_DB defined to be
+ *  the default one, and USE_MYSQL/USE_MSQL should be defined to be
+ *  numbers in the local_options file or equivalent, e.g.:
+ *    #define USE_MSQL 1
+ *    #define USE_MYSQL 2
+ *    #define DEFAULT_DB USE_MSQL
+ *  The value that you defined it to will be that expected when you
+ *  make a call to db_connect( ... ) as the fourth argument.  Without
+ *  the fourth argument, the value used will be that for DEFAULT_DB.
+ *
+ * efuns: db_connect(), db_exec(), db_fetch(), db_close();
  */
 #ifdef PACKAGE_DB
+#define DEFAULT_DB USE_MYSQL
 #undef USE_MSQL
-#define USE_MYSQL 2
+#define USE_MYSQL 1
 #undef USE_POSTGRES
+#undef USE_POSTGRES2
+#undef USE_SQLITE2
+#undef USE_SQLITE3
 #endif
+
 
 /*PACKAGE DWLIB: some discworld mudlib simuls coded in C (well just one right now) */
 #define PACKAGE_DWLIB
@@ -960,7 +984,9 @@
 #undef ALLOW_INHERIT_AFTER_FUNCTION
 #undef ALLOW_INHERIT_AFTER_GLOBAL_VARIABLES
 
-/*PACKAGE_ASYNC: adds some efuns for asyncronous IO */
+/*PACKAGE_ASYNC: adds some efuns for asyncronous IO
+* Recommended when using PACKAGE_DB
+*/
 #define PACKAGE_ASYNC
 
 /*PACKAGE_SHA1: adds a function to calculate the sha1 hash of a string sha1(string).  Use PACKAGE_CRYPTO instead if possible. */
@@ -984,7 +1010,7 @@
  */
 #define HAS_CONSOLE
 
-/* IPV6: Use IP version 6 instead of 4, for most people the only difference 
+/* IPV6: Use IP version 6 instead of 4, for most people the only difference
  * will be that numerical IP addresses get ::ffff: added in front.*/
 #define IPV6
 
